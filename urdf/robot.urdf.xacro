@@ -1,6 +1,11 @@
 <?xml version="1.0"?>
 <robot name="hospital_robot" xmlns:xacro="http://www.ros.org/wiki/xacro">
 
+  <!-- ==================== ROBOT NAME PARAMETER ==================== -->
+  <!-- Pass robot_name:=rover1 or robot_name:=rover2 when spawning -->
+  <xacro:arg name="robot_name" default="hospital_robot"/>
+  <xacro:property name="robot_ns" value="$(arg robot_name)"/>
+
  
   <!-- ==================== MATERIALS ==================== -->
   <material name="grey">      <color rgba="0.55 0.55 0.55 1.0"/></material>
@@ -628,18 +633,20 @@
       <wheel_separation>0.720</wheel_separation>
       <wheel_radius>0.150</wheel_radius>
       <odom_publish_frequency>10</odom_publish_frequency>
-      <topic>cmd_vel</topic>
-      <odom_topic>odom</odom_topic>
-      <frame_id>odom</frame_id>
-      <child_frame_id>base_link</child_frame_id>
+      <!-- Namespaced per robot so two rovers don't share cmd_vel/odom -->
+      <topic>${robot_ns}/cmd_vel</topic>
+      <odom_topic>${robot_ns}/odom</odom_topic>
+      <frame_id>${robot_ns}/odom</frame_id>
+      <child_frame_id>${robot_ns}/base_link</child_frame_id>
     </plugin>
   </gazebo>
   <!-- ==================== LIDAR SENSOR PLUGIN ==================== -->
 <gazebo reference="lidar_link">
   <sensor name="lidar" type="gpu_lidar">
     <update_rate>10</update_rate>
-    <topic>scan</topic>
-    <gz_frame_id>lidar_link</gz_frame_id>
+    <!-- Namespaced scan topic per rover -->
+    <topic>${robot_ns}/scan</topic>
+    <gz_frame_id>${robot_ns}/lidar_link</gz_frame_id>
     <lidar>
       <scan>
         <horizontal>
