@@ -7,7 +7,7 @@ Each rover runs its own autonomous agent. When a goal is broadcast to the fleet,
 > **Fork of** [bismanroopsingh/Ros-project](https://github.com/bismanroopsingh/Ros-project) — extended from single-robot delivery to decentralized multi-rover coordination.
 
 ---
-
+<img src="media/multirover" width="720" alt="Navigation Demo">
 ## Table of Contents
 
 - [Features](#features)
