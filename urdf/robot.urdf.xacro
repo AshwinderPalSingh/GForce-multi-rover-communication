@@ -303,13 +303,21 @@
       <material name="black"/>
     </visual>
 
+    <!-- Collision origin raised +0.090 so the caster contacts the floor at
+         the same height as the drive wheels.
+         This link sits at base_link z = 0.030 (swivel) - 0.150 (wheel) =
+         -0.120. With the sphere centred on the link origin its bottom was
+         at -0.240, i.e. 90 mm BELOW the drive-wheel contact of -0.150, so
+         the rover balanced on its casters with the drive wheels in the
+         air. Centre is now -0.030 -> bottom -0.150, level with the drive
+         wheels. Visual meshes are deliberately left untouched. -->
     <collision>
-      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <origin xyz="0 0 0.090" rpy="0 0 0"/>
       <geometry><sphere radius="0.120"/></geometry>
     </collision>
     <inertial>
       <mass value="1.350"/>
-      <origin xyz="0 0 0"/>
+      <origin xyz="0 0 0.090"/>
       <inertia ixx="0.003645" ixy="0" ixz="0"
                iyy="0.003645" iyz="0"
                izz="0.003645"/>
@@ -457,8 +465,15 @@
       <material name="black"/>
     </visual>
 
+    <!-- Collision origin raised +0.015 to match the drive-wheel contact
+         height. This link sits at base_link z = 0.105 (swivel) - 0.150
+         (wheel) = -0.045, so the sphere bottom was -0.165. Note caster 3's
+         swivel was mounted at z=+0.105 while caster 1's was at z=+0.030,
+         so the casters hung at different heights, which is what rolled
+         the rover onto its side. Centre is now -0.030 -> bottom -0.150,
+         matching caster 1 and both drive wheels. -->
     <collision>
-      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <origin xyz="0 0 0.015" rpy="0 0 0"/>
       <geometry><sphere radius="0.120"/></geometry>
     </collision>
     <inertial>
@@ -519,8 +534,22 @@
   <joint name="lidar_joint" type="fixed">
     <parent link="lidar_mount"/>
     <child link="lidar_link"/>
-    <!-- Mount z=0.435; sensor sits 0.060 m above top → 0.435+0.060=0.495 [×0.6] -->
-    <origin xyz="0.360 0 0.495" rpy="0 0 0"/>
+    <!-- Sensor height raised 0.495 -> 0.600.
+         At 0.495 the scan plane cut straight through the payload box, whose
+         collision spans z 0.30..0.54 and x -0.30..+0.30 (i.e. directly
+         behind this sensor at x=+0.360). 80 of the 360 rays therefore
+         returned the robot's own cargo box: a rectangular phantom obstacle
+         at 0.35-0.70 m across the whole rear arc (bearings +/-141..180),
+         welded to the robot and moving with it. That poisoned the costmap
+         and, worse, gave AMCL a large block of scan data that can never
+         match the map, which is what drove localisation to diverge by
+         metres and sent the rovers off in random directions.
+         0.600 clears the box top (0.540) by 60 mm. It costs no obstacle
+         visibility: everything under 0.60 in hospital.world (supply boxes
+         0.40, laundry bag / medicine box 0.30, charging dock 0.04) was
+         already below the old 0.495 plane, while the lowest obstacles that
+         were visible (beds and wet-floor sign at 0.70) still are. -->
+    <origin xyz="0.360 0 0.600" rpy="0 0 0"/>
   </joint>
 
   <!-- ==================== IGNITION GAZEBO MATERIALS ==================== -->
@@ -624,57 +653,82 @@
     <mu2>0.0</mu2>
   </gazebo>
 
-  <!-- ==================== SIMPLE DIFF DRIVE ==================== -->
+  <!-- ==================== GAZEBO CLASSIC DIFF DRIVE ==================== -->
   <gazebo>
-    <plugin filename="libignition-gazebo-diff-drive-system.so"
-            name="ignition::gazebo::systems::DiffDrive">
+    <plugin name="diff_drive" filename="libgazebo_ros_diff_drive.so">
+      <ros>
+        <namespace>${robot_ns}</namespace>
+        <remapping>cmd_vel:=cmd_vel</remapping>
+        <remapping>odom:=odom</remapping>
+      </ros>
       <left_joint>left_wheel_joint</left_joint>
       <right_joint>right_wheel_joint</right_joint>
       <wheel_separation>0.720</wheel_separation>
-      <wheel_radius>0.150</wheel_radius>
-      <odom_publish_frequency>10</odom_publish_frequency>
-      <!-- Namespaced per robot so two rovers don't share cmd_vel/odom -->
-      <topic>${robot_ns}/cmd_vel</topic>
-      <odom_topic>${robot_ns}/odom</odom_topic>
-      <frame_id>${robot_ns}/odom</frame_id>
-      <child_frame_id>${robot_ns}/base_link</child_frame_id>
+      <wheel_diameter>0.300</wheel_diameter>
+      <max_wheel_torque>20.0</max_wheel_torque>
+      <max_wheel_acceleration>1.0</max_wheel_acceleration>
+      <odometry_frame>${robot_ns}/odom</odometry_frame>
+      <robot_base_frame>${robot_ns}/base_link</robot_base_frame>
+      <publish_odom>true</publish_odom>
+      <publish_odom_tf>true</publish_odom_tf>
+      <publish_wheel_tf>false</publish_wheel_tf>
+      <update_rate>30.0</update_rate>
     </plugin>
   </gazebo>
-  <!-- ==================== LIDAR SENSOR PLUGIN ==================== -->
-<gazebo reference="lidar_link">
-  <sensor name="lidar" type="gpu_lidar">
-    <update_rate>10</update_rate>
-    <!-- Namespaced scan topic per rover -->
-    <topic>${robot_ns}/scan</topic>
-    <gz_frame_id>${robot_ns}/lidar_link</gz_frame_id>
-    <lidar>
-      <scan>
-        <horizontal>
-          <samples>360</samples>
-          <resolution>1</resolution>
-          <min_angle>-3.14159265</min_angle>
-          <max_angle>3.14159265</max_angle>
-        </horizontal>
-        <vertical>
-          <samples>1</samples>
-          <min_angle>0</min_angle>
-          <max_angle>0</max_angle>
-        </vertical>
-      </scan>
-      <range>
-        <min>0.35</min>
-        <max>12.0</max>
-        <resolution>0.01</resolution>
-      </range>
-      <noise>
-        <type>gaussian</type>
-        <mean>0.0</mean>
-        <stddev>0.01</stddev>
-      </noise>
-    </lidar>
-    <always_on>1</always_on>
-    <visualize>true</visualize>
-  </sensor>
-</gazebo>
+
+  <!-- ==================== GAZEBO CLASSIC LIDAR ==================== -->
+  <gazebo reference="lidar_link">
+    <sensor name="lidar" type="ray">
+      <always_on>true</always_on>
+      <visualize>true</visualize>
+      <update_rate>10</update_rate>
+      <ray>
+        <scan>
+          <horizontal>
+            <samples>360</samples>
+            <resolution>1</resolution>
+            <min_angle>-3.14159265</min_angle>
+            <max_angle>3.14159265</max_angle>
+          </horizontal>
+        </scan>
+        <range>
+          <min>0.35</min>
+          <max>12.0</max>
+          <resolution>0.01</resolution>
+        </range>
+        <noise>
+          <type>gaussian</type>
+          <mean>0.0</mean>
+          <stddev>0.01</stddev>
+        </noise>
+      </ray>
+      <plugin name="scan" filename="libgazebo_ros_ray_sensor.so">
+        <ros>
+          <namespace>${robot_ns}</namespace>
+          <remapping>~/out:=scan</remapping>
+        </ros>
+        <output_type>sensor_msgs/LaserScan</output_type>
+        <frame_name>${robot_ns}/lidar_link</frame_name>
+      </plugin>
+    </sensor>
+  </gazebo>
+
+  <!-- ==================== GAZEBO CLASSIC JOINT STATE PUB ==================== -->
+  <gazebo>
+    <plugin name="joint_states" filename="libgazebo_ros_joint_state_publisher.so">
+      <ros>
+        <namespace>${robot_ns}</namespace>
+        <remapping>~/out:=joint_states</remapping>
+      </ros>
+      <update_rate>30</update_rate>
+      <joint_name>left_wheel_joint</joint_name>
+      <joint_name>right_wheel_joint</joint_name>
+      <joint_name>front_caster_1_swivel_joint</joint_name>
+      <joint_name>front_caster_1_wheel_joint</joint_name>
+      <joint_name>front_caster_3_swivel_joint</joint_name>
+      <joint_name>front_caster_3_wheel_joint</joint_name>
+    </plugin>
+  </gazebo>
 
 </robot>
+

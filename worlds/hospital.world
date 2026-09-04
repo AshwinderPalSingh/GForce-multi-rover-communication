@@ -1,27 +1,30 @@
 <?xml version="1.0" ?>
-<sdf version="1.8">
+<!-- Gazebo Classic 11 world.
+     Converted from the original Ignition/Fortress version, which is kept
+     alongside as hospital.world.ignition-backup.
+
+     Classic 11 parses SDF only up to 1.7 and rejected the 1.8 header
+     ("Unable to convert from SDF version 1.8 to 1.7"). It also has no
+     "ignored" physics type -- that is an Ignition convention where the
+     engine is supplied by a system plugin instead ("Invalid Physics
+     Type[ignored]" -> "Unable to create physics engine"). Either error
+     alone aborts world load, which is why gzserver exited at startup.
+
+     Physics, sensors, scene broadcasting and user commands are all built
+     into gzserver, so the ignition-gazebo-*-system plugins have no Classic
+     equivalent and are dropped. The ROS interface plugins
+     (libgazebo_ros_init / _factory / _force_system) are injected by
+     gazebo_ros's own gzserver launch file via -s arguments, so they must
+     not be listed here either. -->
+<sdf version="1.6">
   <world name="hospital">
 
     <!-- ===== PHYSICS ===== -->
-    <physics name="1ms" type="ignored">
+    <physics name="default_physics" default="true" type="ode">
       <max_step_size>0.001</max_step_size>
       <real_time_factor>1.0</real_time_factor>
       <real_time_update_rate>1000</real_time_update_rate>
     </physics>
-
-    <!-- ===== PLUGINS ===== -->
-    <plugin filename="ignition-gazebo-physics-system"
-            name="ignition::gazebo::systems::Physics"/>
-    <plugin filename="ignition-gazebo-user-commands-system"
-            name="ignition::gazebo::systems::UserCommands"/>
-    <plugin filename="ignition-gazebo-scene-broadcaster-system"
-            name="ignition::gazebo::systems::SceneBroadcaster"/>
-    <plugin filename="ignition-gazebo-sensors-system"
-            name="ignition::gazebo::systems::Sensors">
-      <render_engine>ogre</render_engine>
-    </plugin>
-    <plugin filename="ignition-gazebo-contact-system"
-            name="ignition::gazebo::systems::Contact"/>
 
     <!-- ===== LIGHTING (Hospital Cool White 6000K) ===== -->
     <light name="main_light_1" type="directional">
@@ -557,88 +560,57 @@
       </link>
     </model>
 
-    <!-- ===== DYNAMIC ACTORS ===== -->
+    <!-- ===== PEOPLE (static obstacles) =====
+         Originally three <actor> blocks whose skin/animation meshes were
+         Ignition Fuel URLs. Under Gazebo Classic those URLs download an
+         invalid COLLADA file, and Classic's ColladaLoader then segfaults
+         the server ("Missing COLLADA tag" -> core dump).
 
-    <!-- Actor 1: Roamer in main corridor (stationary) -->
-    <!-- <actor name="roamer_1">
-      <pose>-3 0 0 0 0 0</pose>
-      <skin>
-        <filename>https://fuel.gazebosim.org/1.0/Mingfei/models/actor/tip/files/meshes/stand.dae</filename>
-        <scale>1.0</scale>
-      </skin>
-      <animation name="standing">
-        <filename>https://fuel.gazebosim.org/1.0/Mingfei/models/actor/tip/files/meshes/stand.dae</filename>
-        <interpolate_x>true</interpolate_x>
-      </animation>
-      <script>
-        <loop>true</loop>
-        <auto_start>true</auto_start>
-        <trajectory id="0" type="standing">
-          <waypoint><time>0</time><pose>-3 0 1.0 0 0 0</pose></waypoint>
-          <waypoint><time>100</time><pose>-3 0 1.0 0 0 0</pose></waypoint>
-        </trajectory>
-      </script>
-      <link name="actor_body">
-        <collision name="col">
-          <geometry><cylinder><radius>0.3</radius><length>1.8</length></cylinder></geometry>
-          <pose>0 0 0.9 0 0 0</pose>
-        </collision>
-      </link>
-    </actor>
+         The original block was also malformed: XML comments cannot nest,
+         so the "<!-- Actor 3" comment on the old line 592 silently closed
+         the comment opened at the old line 566. Only roamer_1 was actually
+         disabled; the receptionist and patient were live despite appearing
+         commented out, and a stray "-->" dangled at the end of the block.
 
-    <!-- Actor 3: Stationary receptionist standing at nurses desk -->
-    <actor name="stationary_receptionist">
-      <pose>1.0 1.8 0 0 0 3.14</pose>
-      <skin>
-        <filename>https://fuel.gazebosim.org/1.0/Mingfei/models/actor/tip/files/meshes/stand.dae</filename>
-        <scale>1.0</scale>
-      </skin>
-      <animation name="standing">
-        <filename>https://fuel.gazebosim.org/1.0/Mingfei/models/actor/tip/files/meshes/stand.dae</filename>
-        <interpolate_x>true</interpolate_x>
-      </animation>
-      <script>
-        <loop>true</loop>
-        <auto_start>true</auto_start>
-        <trajectory id="0" type="standing">
-          <waypoint><time>0</time><pose>1.0 1.8 1.0 0 0 3.14</pose></waypoint>
-          <waypoint><time>100</time><pose>1.0 1.8 1.0 0 0 3.14</pose></waypoint>
-        </trajectory>
-      </script>
-      <link name="actor_body">
-        <collision name="col">
-          <geometry><cylinder><radius>0.3</radius><length>1.8</length></cylinder></geometry>
-          <pose>0 0 0.9 0 0 0</pose>
-        </collision>
-      </link>
-    </actor>
+         Both live actors are reproduced below as static cylinder models
+         with the same poses and the same 0.3 m x 1.8 m collision geometry
+         they already declared, so they remain physical obstacles for
+         navigation and stuck-recovery testing with no mesh dependency.
+         roamer_1 stays disabled, as originally intended. -->
 
-    <!-- Actor 4: Erratic patient (stationary) -->
-    <actor name="erratic_patient">
-      <pose>1.5 -1 0 0 0 0</pose>
-      <skin>
-        <filename>https://fuel.gazebosim.org/1.0/Mingfei/models/actor/tip/files/meshes/stand.dae</filename>
-        <scale>1.0</scale>
-      </skin>
-      <animation name="standing">
-        <filename>https://fuel.gazebosim.org/1.0/Mingfei/models/actor/tip/files/meshes/stand.dae</filename>
-        <interpolate_x>true</interpolate_x>
-      </animation>
-      <script>
-        <loop>true</loop>
-        <auto_start>true</auto_start>
-        <trajectory id="0" type="standing">
-          <waypoint><time>0</time><pose>1 -1 1.0 0 0 0</pose></waypoint>
-          <waypoint><time>100</time><pose>1 -1 1.0 0 0 0</pose></waypoint>
-        </trajectory>
-      </script>
-      <link name="actor_body">
-        <collision name="col">
+    <model name="person_reception">
+      <static>true</static>
+      <pose>1.0 1.8 0.9 0 0 3.14</pose>
+      <link name="body">
+        <collision name="collision">
           <geometry><cylinder><radius>0.3</radius><length>1.8</length></cylinder></geometry>
-          <pose>0 0 0.9 0 0 0</pose>
         </collision>
+        <visual name="visual">
+          <geometry><cylinder><radius>0.3</radius><length>1.8</length></cylinder></geometry>
+          <material>
+            <ambient>0.2 0.35 0.55 1</ambient>
+            <diffuse>0.2 0.35 0.55 1</diffuse>
+          </material>
+        </visual>
       </link>
-    </actor> -->
+    </model>
+
+    <model name="person_patient">
+      <static>true</static>
+      <pose>1.5 -1.0 0.9 0 0 0</pose>
+      <link name="body">
+        <collision name="collision">
+          <geometry><cylinder><radius>0.3</radius><length>1.8</length></cylinder></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><cylinder><radius>0.3</radius><length>1.8</length></cylinder></geometry>
+          <material>
+            <ambient>0.55 0.3 0.3 1</ambient>
+            <diffuse>0.55 0.3 0.3 1</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
 
   </world>
 </sdf>

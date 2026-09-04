@@ -45,8 +45,6 @@ def generate_launch_description():
     )
 
     # ── Auto-set initial poses for AMCL ───────────────────────────────────
-    # AMCL needs an initialpose message to start publishing map→odom TF.
-    # We publish this 30s after Nav2 starts (AMCL must be active first).
     initialpose_rover1 = ExecuteProcess(
         cmd=[
             'ros2', 'topic', 'pub', '--once',
@@ -75,15 +73,23 @@ def generate_launch_description():
         output='screen',
     )
 
-    # ── Goal Assignment Manager ────────────────────────────────────────────
-    goal_assignment_manager = Node(
+    # ══════════════════════════════════════════════════════════════════════
+    #  DISTRIBUTED COMMUNICATION NODES
+    #  In real life, each rover_agent runs on its own onboard computer.
+    #  The goal_dispatcher runs on the base station.
+    #  Here in simulation, we launch everything on one machine.
+    # ══════════════════════════════════════════════════════════════════════
+
+    # ── Rover 1 Agent (would run on rover1's onboard computer) ─────────
+    rover1_agent = Node(
         package='hospital_robot_description',
-        executable='goal_assignment_manager.py',
-        name='goal_assignment_manager',
+        executable='rover_agent.py',
+        name='rover1_agent',
         output='screen',
         parameters=[{
             'use_sim_time': True,
-            'rover_names': ['rover1', 'rover2'],
+            'rover_id': 'rover1',
+            'auction_timeout': 2.0,
             'progress_check_interval': 3.0,
             'stuck_distance_threshold': 0.05,
             'stuck_consecutive_checks': 3,
@@ -92,13 +98,44 @@ def generate_launch_description():
         }],
     )
 
+    # ── Rover 2 Agent (would run on rover2's onboard computer) ─────────
+    rover2_agent = Node(
+        package='hospital_robot_description',
+        executable='rover_agent.py',
+        name='rover2_agent',
+        output='screen',
+        parameters=[{
+            'use_sim_time': True,
+            'rover_id': 'rover2',
+            'auction_timeout': 2.0,
+            'progress_check_interval': 3.0,
+            'stuck_distance_threshold': 0.05,
+            'stuck_consecutive_checks': 3,
+            'reswitch_distance_ratio': 0.5,
+            'goal_tolerance': 0.5,
+        }],
+    )
+
+    # ── Goal Dispatcher (runs on base station / laptop) ────────────────
+    goal_dispatcher = Node(
+        package='hospital_robot_description',
+        executable='goal_dispatcher.py',
+        name='goal_dispatcher',
+        output='screen',
+        parameters=[{'use_sim_time': True}],
+    )
+
     return LaunchDescription([
         # Nav2 stacks delayed to let Gazebo + robots spawn first
         TimerAction(period=20.0, actions=[rover1_nav2]),
         TimerAction(period=22.0, actions=[rover2_nav2]),
-        # Auto-set initial poses so AMCL starts localizing (map frame appears)
+        # Auto-set initial poses so AMCL starts localizing
         TimerAction(period=32.0, actions=[initialpose_rover1]),
         TimerAction(period=33.0, actions=[initialpose_rover2]),
-        # Goal manager after AMCL is ready
-        TimerAction(period=38.0, actions=[goal_assignment_manager]),
+        # Distributed communication nodes (after Nav2 is ready)
+        TimerAction(period=36.0, actions=[
+            rover1_agent,
+            rover2_agent,
+            goal_dispatcher,
+        ]),
     ])
