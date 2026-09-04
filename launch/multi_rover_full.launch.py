@@ -173,7 +173,11 @@ def generate_launch_description():
                       'stuck_distance_threshold': 0.05,
                       'stuck_consecutive_checks': 3,
                       'reswitch_distance_ratio': 0.5,
-                      'goal_tolerance': 0.5}])
+                      'goal_tolerance': 0.5,
+                      # Retry guard: stops two blocked rovers handing an
+                      # unreachable goal back and forth indefinitely.
+                      'goal_retry_cooldown': 30.0,
+                      'max_goal_attempts': 2}])
 
     rover2_agent = Node(
         package='hospital_robot_description', executable='rover_agent.py',
@@ -184,7 +188,11 @@ def generate_launch_description():
                       'stuck_distance_threshold': 0.05,
                       'stuck_consecutive_checks': 3,
                       'reswitch_distance_ratio': 0.5,
-                      'goal_tolerance': 0.5}])
+                      'goal_tolerance': 0.5,
+                      # Retry guard: stops two blocked rovers handing an
+                      # unreachable goal back and forth indefinitely.
+                      'goal_retry_cooldown': 30.0,
+                      'max_goal_attempts': 2}])
 
     goal_dispatcher = Node(
         package='hospital_robot_description', executable='goal_dispatcher.py',
