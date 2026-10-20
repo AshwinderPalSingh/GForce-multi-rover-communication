@@ -1,4 +1,7 @@
-# GForce Multi-Rover Communication — ROS 2 (Humble) + Gazebo Classic
+# GForce Decentralized Multi-Rover Communication — ROS 2 (Humble) + Gazebo Classic
+
+
+demo - https://www.dropbox.com/scl/fi/7kujp0jmk32j10u11oty7/decentral.mp4?rlkey=e6e1t1g7lfv029shk1cwpshxt&st=im8ifza9&dl=0
 
 A multi-rover hospital delivery system with **decentralized, auction-based goal negotiation**. Built on ROS 2 Humble and Gazebo Classic 11.
 
